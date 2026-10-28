@@ -44,7 +44,7 @@ struct R36SHostConfig {
     std::string language = "Spanish";
     uint32_t targetWidth = R36S_SCREEN_WIDTH;
     uint32_t targetHeight = R36S_SCREEN_HEIGHT;
-    uint32_t frameLimit = 30; // 30 FPS default for Rockchip RK3326 Cortex-A35 thermal & battery stability
+    uint32_t frameLimit = 0;  // 0 = uncapped (no frame-pacing sleep); --cap30 / --cap60 still limit the frame rate
     uint32_t screenWidth = R36S_SCREEN_WIDTH;   // the panel (window) size
     uint32_t screenHeight = R36S_SCREEN_HEIGHT;
     uint32_t rotation = 0;                       // 0, 90, 270 (NFSU2_ROTATE)
