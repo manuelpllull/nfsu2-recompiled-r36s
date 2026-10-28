@@ -232,6 +232,11 @@ CAP_ARG="--cap60"; [ "$NFSU2_FPS" = "30" ] && CAP_ARG="--cap30"
 # Keep the previous run's log (a crash on one run is otherwise overwritten by the next launch)
 [ -f "$GAMEDIR/log.txt" ] && mv -f "$GAMEDIR/log.txt" "$GAMEDIR/log.prev.txt"
 
+# GPTOKEYB: START + SELECT exit shortcut.
+if [ -n "${GPTOKEYB:-}" ]; then
+  $GPTOKEYB "$BIN" -k &
+fi
+
 # Launch game: GLES 2.0 at the screen's native resolution (see Display above)
 LANG_ARG="--lang=$NFSU2_LANG"
 echo "[NFSU2] running $BIN" > "$GAMEDIR/log.txt"
