@@ -51,7 +51,7 @@ public:
     template<class SetKey> void axis(uint8_t sdlAxis, int16_t raw, bool driving, SetKey&& setKey) {
         const float v = raw < 0 ? raw / 32768.0f : raw / 32767.0f;
         switch (sdlAxis) {
-        case SDL_CONTROLLER_AXIS_LEFTX: stickX_ = dead(v); break;
+        case SDL_CONTROLLER_AXIS_LEFTX: stickX_ = (std::fabs(v) < 0.32f ? 0.0f : v); break;
         case SDL_CONTROLLER_AXIS_LEFTY: stickY_ = dead(v); break;
         case SDL_CONTROLLER_AXIS_RIGHTX: rightX_ = dead(v); break;
         case SDL_CONTROLLER_AXIS_RIGHTY: rightY_ = dead(v); break;
