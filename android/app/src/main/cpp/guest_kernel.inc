@@ -366,6 +366,29 @@ struct RegistryValue {uint32_t type;std::vector<uint8_t> bytes;};
 std::map<std::string,RegistryValue> gameRegistry;
 std::map<uint32_t,bool> registryHandles;
 uint32_t nextRegistryHandle=0xf0050000;
+// NFSU2_REGISTRY_SAVE=<file>: the option DWORDs (g_*) the game writes, read back at the next launch.
+std::map<std::string,uint32_t> savedRegistry;
+void loadSavedRegistry(){
+    const char* path=std::getenv("NFSU2_REGISTRY_SAVE");if(!path||!*path)return;
+    std::ifstream in(path);std::string line;
+    while(std::getline(in,line)){
+        size_t eq=line.find('=');if(eq==std::string::npos||eq==0)continue;
+        auto name=lower(line.substr(0,eq));uint32_t v=static_cast<uint32_t>(std::strtoul(line.c_str()+eq+1,nullptr,0));
+        savedRegistry[name]=v;std::vector<uint8_t> bytes(4);std::memcpy(bytes.data(),&v,4);gameRegistry[name]=RegistryValue{4,std::move(bytes)};
+    }
+    if(!savedRegistry.empty())NFS_RUNTIME_LOG(ANDROID_LOG_INFO,"NFSU2","Registry: %zu options saved in game read from %s",savedRegistry.size(),path);
+}
+void saveRegistryValue(const std::string& name,const RegistryValue& value){
+    const char* path=std::getenv("NFSU2_REGISTRY_SAVE");
+    if(!path||!*path||value.type!=4||value.bytes.size()!=4||name.compare(0,2,"g_")!=0)return;
+    uint32_t v;std::memcpy(&v,value.bytes.data(),4);
+    if(auto it=savedRegistry.find(name);it!=savedRegistry.end()&&it->second==v)return;
+    savedRegistry[name]=v;
+    const std::string temp=std::string(path)+".tmp";
+    {std::ofstream out(temp,std::ios::trunc);for(const auto& [n,x]:savedRegistry)out<<n<<'='<<x<<'\n';if(!out)return;}
+    std::rename(temp.c_str(),path);
+    NFS_RUNTIME_LOG(ANDROID_LOG_INFO,"NFSU2","Registry saved %s=%u",name.c_str(),v);
+}
 void registryOpen(uint32_t output,uint32_t argc){
     auto key=lower(guestString(arg(1)));
     NFS_RUNTIME_LOG(ANDROID_LOG_INFO,"NFSU2","Registry open %08x\\%s",arg(0),key.c_str());
@@ -392,6 +415,7 @@ void registryOpen(uint32_t output,uint32_t argc){
                 start=end+1;
             }
         }
+        loadSavedRegistry();
     }
     uint32_t handle=nextRegistryHandle++;registryHandles.emplace(handle,true);write32(output,handle);ret(0,argc);
 }
@@ -410,7 +434,8 @@ void regSetValueExA(){
     if(!registryHandles.count(arg(0))){ret(6,6);return;}
     uint32_t size=arg(5);if(size>1048576){ret(87,6);return;}
     RegistryValue value{arg(3),std::vector<uint8_t>(size)};if(size)std::memcpy(value.bytes.data(),ptr(arg(4),size),size);
-    gameRegistry[lower(guestString(arg(1)))]=std::move(value);ret(0,6);
+    auto name=lower(guestString(arg(1)));saveRegistryValue(name,value);
+    gameRegistry[name]=std::move(value);ret(0,6);
 }
 #include "guest_charset.inc"
 #include "guest_resources.inc"
