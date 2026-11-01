@@ -12,7 +12,9 @@
 //   R1 nitrous, L1 look back, R2/L2 shift up/down (manual gearbox), Start pause, Select reset car,
 //   left stick steer. D-pad as on the consoles: Up engage event / enter shop (Enter), Down career status (1),
 //   Left world map (M), Right SMS (Tab).
-// Menus: d-pad / left stick move, Cross or Start accept, Circle or Triangle back, Square = Space.
+//   Debug camera (NFSU2_DEBUG_CAMERA=1): L3 cycles it (L), right stick turns/moves it (keypad 4/6, 1/3).
+// Menus: d-pad / left stick move, Cross or Start accept, Circle or Triangle back, Square = Space,
+//   right stick turns the garage camera around the car.
 #include <SDL.h>
 #include <array>
 #include <cmath>
@@ -45,6 +47,7 @@ public:
         const int b = buttonFor(sdlButton);
         if (b < 0) return false;
         buttons_[b] = down;
+        if (!down) latched_[b] = false;
         apply(driving, setKey);
         return true;
     }
@@ -70,21 +73,25 @@ public:
     }
     template<class SetKey> void releaseAll(SetKey&& setKey) {
         buttons_.fill(false);
+        latched_.fill(false);
         stickX_ = stickY_ = rightX_ = rightY_ = leftTrigger_ = rightTrigger_ = 0;
         apply(driving_, setKey);
     }
     bool held(Button b) const { return buttons_[b]; }
 
-    // The guest joystick: left stick X while driving (proportional steering), nothing else.
+    // The guest joystick: left stick X while driving (proportional steering), right stick in menus (garage camera).
     void padState(float axes[6], uint32_t& buttons, int& hatX, int& hatY) const {
         for (int i = 0; i < 6; ++i) axes[i] = 0;
-        axes[0] = driving_ ? stickX_ : 0.0f;
+        axes[0] = driving_ ? stickX_ : rightX_;
+        axes[1] = driving_ ? 0.0f : rightY_;
         buttons = 0;
         hatX = hatY = 0;
     }
 
 private:
     std::array<bool, ButtonCount> buttons_{};
+    // Buttons held across a menu/driving switch send nothing until released.
+    std::array<bool, ButtonCount> latched_{};
     float stickX_ = 0, stickY_ = 0, rightX_ = 0, rightY_ = 0, leftTrigger_ = 0, rightTrigger_ = 0;
     std::array<bool, 256> sent_{};
     bool driving_ = false;
@@ -93,6 +100,12 @@ private:
 
     template<class SetKey> void apply(bool driving, SetKey& setKey) {
         std::array<bool, 256> want{};
+        if (driving != driving_) {
+            latched_ = buttons_;
+            // Cross held through the switch into a race keeps accelerating, as on the consoles.
+            if (driving) latched_[A] = false;
+        }
+        auto on = [&](Button b) { return buttons_[b] && !latched_[b]; };
         // Hysteresis keeps a stick resting near the threshold from chattering.
         auto past = [&](float value, unsigned scan) { return value > (sent_[scan] ? .25f : .4f); };
         if (driving) {
@@ -100,26 +113,29 @@ private:
             // B look back, Left Shift / Left Ctrl shift up/down, Escape pause, R reset; free-roam actions
             // Enter engage event / shop, 1 career status, M world map, Tab SMS (on the d-pad, as on the consoles).
             // The stick steers through the joystick (proportional).
-            want[0xc8] = buttons_[A];
-            want[0xd0] = buttons_[X];
-            want[0x1c] = buttons_[Up];
-            want[0x02] = buttons_[Down];
-            want[0x32] = buttons_[Left];
-            want[0x0f] = buttons_[Right];
-            want[0x39] = buttons_[B];
-            want[0x2e] = buttons_[Y];
-            want[0x38] = buttons_[R1];
-            want[0x30] = buttons_[L1];
-            want[0x2a] = buttons_[R2] || past(rightTrigger_, 0x2a);
-            want[0x1d] = buttons_[L2] || past(leftTrigger_, 0x1d);
-            want[0x01] = buttons_[Start];
-            want[0x13] = buttons_[Select];
+            want[0xc8] = on(A);
+            want[0xd0] = on(X);
+            want[0x1c] = on(Up);
+            want[0x02] = on(Down);
+            want[0x32] = on(Left);
+            want[0x0f] = on(Right);
+            want[0x39] = on(B);
+            want[0x2e] = on(Y);
+            want[0x38] = on(R1);
+            want[0x30] = on(L1);
+            want[0x2a] = on(R2) || past(rightTrigger_, 0x2a);
+            want[0x1d] = on(L2) || past(leftTrigger_, 0x1d);
+            want[0x01] = on(Start);
+            want[0x13] = on(Select);
+            want[0x26] = on(ThumbL);
+            want[0x4b] = past(-rightX_, 0x4b); want[0x4d] = past(rightX_, 0x4d);
+            want[0x4f] = past(-rightY_, 0x4f); want[0x51] = past(rightY_, 0x51);
         } else {
-            want[0xcb] = buttons_[Left] || past(-stickX_, 0xcb); want[0xcd] = buttons_[Right] || past(stickX_, 0xcd);
-            want[0xc8] = buttons_[Up] || past(-stickY_, 0xc8); want[0xd0] = buttons_[Down] || past(stickY_, 0xd0);
-            want[0x1c] = buttons_[A] || buttons_[Start];
-            want[0x01] = buttons_[B] || buttons_[Y];
-            want[0x39] = buttons_[X];
+            want[0xcb] = on(Left) || past(-stickX_, 0xcb); want[0xcd] = on(Right) || past(stickX_, 0xcd);
+            want[0xc8] = on(Up) || past(-stickY_, 0xc8); want[0xd0] = on(Down) || past(stickY_, 0xd0);
+            want[0x1c] = on(A) || on(Start);
+            want[0x01] = on(B) || on(Y);
+            want[0x39] = on(X);
         }
         driving_ = driving;
         for (unsigned scan = 0; scan < 256; ++scan)

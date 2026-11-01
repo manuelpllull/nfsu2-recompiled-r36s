@@ -76,6 +76,8 @@ Button names are the labels printed on the R36S. The layout follows the PS2 vers
 | **Select** | Reset car | — |
 | **Select + Start** | **Quit to the system menu** | **Quit to the system menu** |
 | **Select + R3** | Show/hide the frame counter | Show/hide the frame counter |
+| **L3** | Debug camera: next mode / back to normal (`NFSU2_DEBUG_CAMERA=1`) | — |
+| **Right Stick** | Debug camera: turn (left/right), forward/back (up/down) | Garage: turn the camera around the car |
 
 ---
 
