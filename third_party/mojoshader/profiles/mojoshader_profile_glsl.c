@@ -2268,8 +2268,32 @@ void emit_GLSL_TEXM3X3VSPEC(Context *ctx)
 
 void emit_GLSL_EXPP(Context *ctx)
 {
-    // !!! FIXME: msdn's asm docs don't list this opcode, I'll have to check the driver documentation.
-    emit_GLSL_EXP(ctx);  // I guess this is just partial precision EXP?
+    // vs_1_x EXPP: x = 2^floor(src), y = frac(src), z = 2^src, w = 1. Later it is just partial precision EXP.
+    if (shader_version_atleast(ctx, 2, 0))
+    {
+        emit_GLSL_EXP(ctx);
+        return;
+    } // if
+
+    const DestArgInfo *arg = &ctx->dest_arg;
+    char swizzle[6] = { '\0' };
+    if (!writemask_xyzw(arg->writemask))
+    {
+        size_t i = 0;
+        swizzle[i++] = '.';
+        if (arg->writemask0) swizzle[i++] = 'x';
+        if (arg->writemask1) swizzle[i++] = 'y';
+        if (arg->writemask2) swizzle[i++] = 'z';
+        if (arg->writemask3) swizzle[i++] = 'w';
+        swizzle[i] = '\0';
+    } // if
+
+    char src0[64]; make_GLSL_srcarg_string_scalar(ctx, 0, src0, sizeof (src0));
+    char code[256];
+    make_GLSL_destarg_assign(ctx, code, sizeof (code),
+                             "vec4(exp2(floor(%s)), fract(%s), exp2(%s), 1.0)%s",
+                             src0, src0, src0, swizzle);
+    output_line(ctx, "%s", code);
 } // emit_GLSL_EXPP
 
 void emit_GLSL_LOGP(Context *ctx)
