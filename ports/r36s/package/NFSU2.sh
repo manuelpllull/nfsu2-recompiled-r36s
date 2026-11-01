@@ -175,6 +175,7 @@ echo 0 | sudo tee /sys/class/vtconsole/vtcon1/bind > /dev/null 2>&1 || true
 #   NFSU2_SCREEN=854x480        # only if the panel size is detected wrongly
 #   NFSU2_ROTATE=90             # panel mounted rotated (90 or 270; portrait panels default to 90)
 #   NFSU2_SHOW_FPS=1            # frame counter on from the start (Select + R3 toggles it in game)
+#   NFSU2_SAVE_OPTIONS=1        # keep the options changed in game (registry.txt; delete it to reset)
 # ---------------------------------------------------------------------------
 NFSU2_GRAPHICS=balanced
 NFSU2_FPS=60
@@ -187,6 +188,7 @@ export NFSU2_DRAW_DIST NFSU2_LANG
 for v in NFSU2_ASPECT NFSU2_RENDER_SCALE NFSU2_RENDER NFSU2_SCREEN NFSU2_ROTATE NFSU2_SHOW_FPS; do
   eval "[ -n \"\${$v:-}\" ] && export $v"
 done
+[ "${NFSU2_SAVE_OPTIONS:-0}" = 1 ] && export NFSU2_REGISTRY_SAVE="$GAMEDIR/registry.txt"
 # HUD layout table of ThirteenAG's widescreen fix (MIT, see widescreen/LICENSE), used on wide screens
 # unless the game folder has its own scripts/NFSUnderground2.WidescreenFix.dat.
 export NFSU2_WIDESCREEN_DAT="$GAMEDIR/widescreen/NFSUnderground2.WidescreenFix.dat"
