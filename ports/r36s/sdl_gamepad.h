@@ -12,6 +12,7 @@
 //   R1 nitrous, L1 look back, R2/L2 shift up/down (manual gearbox), Start pause, Select reset car,
 //   left stick steer. D-pad as on the consoles: Up engage event / enter shop (Enter), Down career status (1),
 //   Left world map (M), Right SMS (Tab).
+//   Debug camera (NFSU2_DEBUG_CAMERA=1): L3 cycles it (L), right stick turns/moves it (keypad 4/6, 1/3).
 // Menus: d-pad / left stick move, Cross or Start accept, Circle or Triangle back, Square = Space.
 #include <SDL.h>
 #include <array>
@@ -124,6 +125,9 @@ private:
             want[0x1d] = on(L2) || past(leftTrigger_, 0x1d);
             want[0x01] = on(Start);
             want[0x13] = on(Select);
+            want[0x26] = on(ThumbL);
+            want[0x4b] = past(-rightX_, 0x4b); want[0x4d] = past(rightX_, 0x4d);
+            want[0x4f] = past(-rightY_, 0x4f); want[0x51] = past(rightY_, 0x51);
         } else {
             want[0xcb] = on(Left) || past(-stickX_, 0xcb); want[0xcd] = on(Right) || past(stickX_, 0xcd);
             want[0xc8] = on(Up) || past(-stickY_, 0xc8); want[0xd0] = on(Down) || past(stickY_, 0xd0);

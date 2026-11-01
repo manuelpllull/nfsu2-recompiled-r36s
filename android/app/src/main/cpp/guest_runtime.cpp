@@ -1256,6 +1256,8 @@ std::string connectGuestRuntime(const char* executable) {
 #else
         if(renderWidth.load()&&renderHeight.load())configureAndroidResolutionModes();
 #endif
+        // NFSU2_DEBUG_CAMERA=1: the game's debug camera (DebugCamerasEnabled), read while loading.
+        if(const char* e=std::getenv("NFSU2_DEBUG_CAMERA");e&&*e=='1'){*static_cast<uint8_t*>(ptr(0x865098,1))=1;NFS_RUNTIME_LOG(ANDROID_LOG_INFO,"NFSU2","Debug camera enabled");}
         memory->commit(stackBase,stackSize); memory->commit(tib,0x1000);
         State fresh; fresh.esp=stackBase+stackSize-64; fresh.fs=tib; fresh.load();
         write32(tib,0xffffffff); write32(tib+4,stackBase+stackSize); write32(tib+8,stackBase); write32(tib+0x18,tib);
