@@ -1007,13 +1007,15 @@ static void scaleBlit(GLuint tex, float bw, float bh, int screenW, int screenH, 
 // the two contexts share textures. Any missing piece leaves the old path in place.
 namespace presenter {
 constexpr int kMaxSlots = 3;
-struct Slot { GLuint tex = 0, fbo = 0; bool busy = false; };
+// readFence: signalled when the GPU has finished the presenter's blit out of the slot.
+struct Slot { GLuint tex = 0, fbo = 0; bool busy = false; void* readFence = nullptr; };
 struct Item { int slot; GLuint tex; void* fence; float bw, bh; int sw, sh; uint32_t frame; };
 typedef void* (*PfnCur)(void);
 typedef unsigned (*PfnMakeCurrent)(void*, void*, void*, void*);
 typedef const char* (*PfnQueryString)(void*, int);
 typedef void* (*PfnFenceSync)(GLenum, GLbitfield);
 typedef GLenum (*PfnClientWait)(void*, GLbitfield, uint64_t);
+typedef void (*PfnWaitSync)(void*, GLbitfield, uint64_t);
 typedef void (*PfnDeleteSync)(void*);
 
 struct State {
@@ -1028,13 +1030,14 @@ struct State {
     PfnMakeCurrent eglMakeCurrent = nullptr;
     PfnFenceSync fenceSync = nullptr;
     PfnClientWait clientWait = nullptr;
+    PfnWaitSync waitSync = nullptr;           // optional, else clientWait
     PfnDeleteSync deleteSync = nullptr;
     std::thread th;
     std::mutex m;
     std::condition_variable cvItem, cvFree;
     std::deque<Item> items;
     bool stop = false, ready = false, failed = false;
-    std::atomic<uint64_t> waitSlotNs{0}, gpuWaitNs{0}, blitSwapNs{0}, frames{0};
+    std::atomic<uint64_t> waitSlotNs{0}, gpuWaitNs{0}, blitSwapNs{0}, frames{0}, fenceTimeouts{0};
 } S;
 
 bool wanted() {
@@ -1077,15 +1080,21 @@ static void threadMain() {
         using clk = std::chrono::steady_clock;
         const auto t0 = clk::now();
         if (it.fence) {
-            S.clientWait(it.fence, 1 /* GL_SYNC_FLUSH_COMMANDS_BIT */, 2000000000ull);
+            const GLenum r = S.clientWait(it.fence, 1 /* GL_SYNC_FLUSH_COMMANDS_BIT */, 2000000000ull);
+            if (r == 0x911B /* GL_TIMEOUT_EXPIRED */ || r == 0x911D /* GL_WAIT_FAILED */) ++S.fenceTimeouts;
             S.deleteSync(it.fence);
         }
         const auto t1 = clk::now();
         scaleBlit(it.tex, it.bw, it.bh, it.sw, it.sh, prog, texLoc, it.frame);
         SDL_GL_SwapWindow(S.window);
+        // The blit is only queued: the render thread waits on this fence before reusing the slot.
+        void* readFence = S.fenceSync(0x9117 /* GL_SYNC_GPU_COMMANDS_COMPLETE */, 0);
+        glFlush();
+        if (!readFence) glFinish();
         const auto t2 = clk::now();
         {
             std::lock_guard<std::mutex> l(S.m);
+            S.slots[it.slot].readFence = readFence;
             S.slots[it.slot].busy = false;
         }
         S.cvFree.notify_all();
@@ -1094,8 +1103,9 @@ static void threadMain() {
         const uint64_t n = ++S.frames;
         if (n - lastFrames >= 300) {
             const uint64_t d = n - lastFrames;
-            std::printf("[NFSU2 PRESENT] %llu frames, ms/frame: render thread waited for a free buffer %.1f, presenter waited for the GPU %.1f, blit + swap %.1f\n",
-                        static_cast<unsigned long long>(d), ms(S.waitSlotNs.exchange(0), d), ms(S.gpuWaitNs.exchange(0), d), ms(S.blitSwapNs.exchange(0), d));
+            std::printf("[NFSU2 PRESENT] %llu frames, ms/frame: render thread waited for a free buffer %.1f, presenter waited for the GPU %.1f, blit + swap %.1f; fence timeouts %llu\n",
+                        static_cast<unsigned long long>(d), ms(S.waitSlotNs.exchange(0), d), ms(S.gpuWaitNs.exchange(0), d), ms(S.blitSwapNs.exchange(0), d),
+                        static_cast<unsigned long long>(S.fenceTimeouts.exchange(0)));
             lastFrames = n;
         }
     }
@@ -1122,6 +1132,7 @@ bool init(SDL_Window* window, SDL_GLContext ctx1, int swapEffect) {
     S.eglMakeCurrent = reinterpret_cast<PfnMakeCurrent>(lookup("eglMakeCurrent"));
     S.fenceSync = reinterpret_cast<PfnFenceSync>(lookup("glFenceSync"));
     S.clientWait = reinterpret_cast<PfnClientWait>(lookup("glClientWaitSync"));
+    S.waitSync = reinterpret_cast<PfnWaitSync>(lookup("glWaitSync"));
     S.deleteSync = reinterpret_cast<PfnDeleteSync>(lookup("glDeleteSync"));
     // Test mode for machines without EGL (the VM's SDL uses GLX): the render context sits on a hidden window.
     const bool hiddenMode = std::getenv("NFSU2_PRESENT_HIDDEN") != nullptr;
@@ -1202,6 +1213,10 @@ void drain() {
 
 void destroySlots() {
     for (int i = 0; i < kMaxSlots; ++i) {
+        if (S.slots[i].readFence) {
+            S.clientWait(S.slots[i].readFence, 0, 1000000000ull);
+            S.deleteSync(S.slots[i].readFence);
+        }
         if (S.slots[i].fbo) glDeleteFramebuffers(1, &S.slots[i].fbo);
         if (S.slots[i].tex) glDeleteTextures(1, &S.slots[i].tex);
         S.slots[i] = Slot();
@@ -1224,12 +1239,25 @@ void submit(float bw, float bh, int sw, int sh, uint32_t frame) {
     S.cvItem.notify_one();
     S.cur = (S.cur + 1) % S.nSlots;
     const auto t0 = clk::now();
+    void* readFence = nullptr;
     {
         std::unique_lock<std::mutex> l(S.m);
         if (!S.cvFree.wait_for(l, std::chrono::seconds(5), [] { return !S.slots[S.cur].busy; })) {
             std::printf("[NFSU2 PRESENT] WARNING: the presenter did not release a buffer within 5 s\n");
             S.slots[S.cur].busy = false;
         }
+        readFence = S.slots[S.cur].readFence;
+        S.slots[S.cur].readFence = nullptr;
+    }
+    // Wait on the GPU, not the CPU, for the presenter's blit out of this slot.
+    if (readFence) {
+        if (S.waitSync) {
+            S.waitSync(readFence, 0, 0xFFFFFFFFFFFFFFFFull /* GL_TIMEOUT_IGNORED */);
+        } else {
+            const GLenum r = S.clientWait(readFence, 0, 1000000000ull);
+            if (r == 0x911B /* GL_TIMEOUT_EXPIRED */ || r == 0x911D /* GL_WAIT_FAILED */) ++S.fenceTimeouts;
+        }
+        S.deleteSync(readFence);
     }
     S.waitSlotNs += std::chrono::duration_cast<std::chrono::nanoseconds>(clk::now() - t0).count();
 }
