@@ -1258,6 +1258,17 @@ std::string connectGuestRuntime(const char* executable) {
 #endif
         // NFSU2_DEBUG_CAMERA=1: the game's debug camera (DebugCamerasEnabled), read while loading.
         if(const char* e=std::getenv("NFSU2_DEBUG_CAMERA");e&&*e=='1'){*static_cast<uint8_t*>(ptr(0x865098,1))=1;NFS_RUNTIME_LOG(ANDROID_LOG_INFO,"NFSU2","Debug camera enabled");}
+        // Garage camera on the right stick: the PC scanner table (0x7FDD10) has no CARSEL_ORBIT entries (0x48/0x49).
+        // The two unused debug camera entries become them, and FENG_PAD_*_ALTERNATE (18-21), which would also move
+        // the menus with these axes, are switched off.
+        bool orbitTable=read32(0x7fe770)==83&&read32(0x7fdd10+40*32+8)==0x90&&read32(0x7fdd10+81*32+8)==0x61&&read32(0x7fdd10+82*32+8)==0x62;
+        for(uint32_t i=0;i<4;++i)orbitTable=orbitTable&&read32(0x7fdd10+(18+i)*32+8)==i+0x2e;
+        if(orbitTable){
+            for(uint32_t i=0;i<4;++i)write32(0x7fdd10+(18+i)*32,0);
+            for(uint32_t i=0;i<2;++i){uint32_t entry=0x7fdd10+(81+i)*32;std::memcpy(ptr(entry,32),ptr(0x7fdd10+40*32,32),32);
+                write32(entry+8,0x48+i);*static_cast<uint16_t*>(ptr(entry+18,2))=i?0x58:0x50;}
+            NFS_RUNTIME_LOG(ANDROID_LOG_INFO,"NFSU2","Garage camera: right stick orbit scanners added");
+        }else NFS_RUNTIME_LOG(ANDROID_LOG_WARN,"NFSU2","Garage camera: unexpected scanner table, right stick orbit left off");
         memory->commit(stackBase,stackSize); memory->commit(tib,0x1000);
         State fresh; fresh.esp=stackBase+stackSize-64; fresh.fs=tib; fresh.load();
         write32(tib,0xffffffff); write32(tib+4,stackBase+stackSize); write32(tib+8,stackBase); write32(tib+0x18,tib);

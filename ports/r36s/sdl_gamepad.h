@@ -13,7 +13,8 @@
 //   left stick steer. D-pad as on the consoles: Up engage event / enter shop (Enter), Down career status (1),
 //   Left world map (M), Right SMS (Tab).
 //   Debug camera (NFSU2_DEBUG_CAMERA=1): L3 cycles it (L), right stick turns/moves it (keypad 4/6, 1/3).
-// Menus: d-pad / left stick move, Cross or Start accept, Circle or Triangle back, Square = Space.
+// Menus: d-pad / left stick move, Cross or Start accept, Circle or Triangle back, Square = Space,
+//   right stick turns the garage camera around the car.
 #include <SDL.h>
 #include <array>
 #include <cmath>
@@ -78,10 +79,11 @@ public:
     }
     bool held(Button b) const { return buttons_[b]; }
 
-    // The guest joystick: left stick X while driving (proportional steering), nothing else.
+    // The guest joystick: left stick X while driving (proportional steering), right stick in menus (garage camera).
     void padState(float axes[6], uint32_t& buttons, int& hatX, int& hatY) const {
         for (int i = 0; i < 6; ++i) axes[i] = 0;
-        axes[0] = driving_ ? stickX_ : 0.0f;
+        axes[0] = driving_ ? stickX_ : rightX_;
+        axes[1] = driving_ ? 0.0f : rightY_;
         buttons = 0;
         hatX = hatY = 0;
     }
