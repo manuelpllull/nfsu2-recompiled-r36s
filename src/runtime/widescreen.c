@@ -129,11 +129,11 @@ void nfs_widescreen_set_resolution(unsigned width, unsigned height) {
     s_hud_pos_x = 640.0f / (640.0f * hud_scale_x);
     /* HudAspectRatioConstraint = Auto: -CalculateWidescreenOffset(W, H, 640, 480). */
     s_hud_offset = -((640.0f / 2.0f) - (480.0f / 2.0f) * s_aspect);
-    wrf(NFS_VA(0x0079AC0C), hud_scale_x);       /* fld [fHudScaleX]: 0x79AC0C in v10, 0x79AC10 in v12.
+    wrf(NFS_VA(0x0079AC0C), hud_scale_x);       /* fld [fHudScaleX]: 0x79AC0C in v10, 0x79AC10 in v12, 0x79AC18 in v12b.
                                                    Writing both addresses clobbered the neighbouring
                                                    constant of whichever exe was running. */
-    wrf(0x00797D50u, s_hud_pos_x);              /* fsub [fHudPosX] */
-    wrf(0x00797D58u, s_hud_pos_x * 2.0f);       /* fmul [fHudPosX_x2] */
+    wrf(NFS_VA(0x00797D50), s_hud_pos_x);       /* fsub [fHudPosX] */
+    wrf(NFS_VA(0x00797D58), s_hud_pos_x * 2.0f); /* fmul [fHudPosX_x2] */
     /* Dyno result graph origin (float[2]). */
     wrf(0x007FA3C0u, 79.0f + ((480.0f * s_aspect) - 640.0f) / 2.0f);
     wrf(0x007FA3C4u, 60.0f);

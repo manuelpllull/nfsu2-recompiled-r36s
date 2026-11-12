@@ -3,42 +3,43 @@
 # (ThirteenAG), found by that mod's byte patterns; every site is inside a block,
 # never a branch target (checked against work/catalog.json). One column per exe of
 # config/exe_variants.txt: v10 recomputed 2026-10-16 from the mod's patterns, v12
-# mapped from v10 by scripts/exe_addr_map.py (identical instructions at both sites).
+# mapped from v10 by scripts/exe_addr_map.py (identical instructions at both sites), v12b
+# the v12 address plus 0x10 from 0x0051C000 on, each checked against the mod's patterns in that exe.
 # scripts/run_lift.py uses the column of the exe it lifts; widescreen.c names a site by
 # its v10 address through NFS_VA() (src/runtime/nfs_exe_addr.h).
-# v10      v12        purpose
-0x0051B05F  0x0051B3CF  HUD anchor X after mov [esp+A0h], 320.0
-0x0053655C  0x005368CC  HUD anchor X after mov [esp+74h], 320.0
-0x0053672D  0x00536A9D  HUD anchor X after mov [esp+84h], 320.0
-0x0053695D  0x00536CCD  HUD anchor X after mov [esp+94h], 320.0
-0x00536CA5  0x00537015  HUD anchor X after mov [esp+74h], 320.0
-0x0050B099  0x0050B4F9  HUD anchor X after mov [esp+1A0h], 320.0
-0x0048B5D4  0x0048B644  HUD anchor X after mov [0082D2D8h], 320.0
-0x005CBDCD  0x005CC0FD  rear-view mirror right X1 (440.0)
-0x005CBDDD  0x005CC10D  rear-view mirror left X1 (200.0)
-0x005CBDED  0x005CC11D  rear-view mirror left X2 (200.0)
-0x005CBDFD  0x005CC12D  rear-view mirror right X2 (440.0)
-0x005CBBC9  0x005CBEF9  cutscene border width (640.0)
-0x005CBBD9  0x005CBF09  cutscene border width (640.0)
-0x005CBB5D  0x005CBE8D  cutscene border width (640.0)
-0x005CBB75  0x005CBEA5  cutscene border width (640.0)
-0x005C6F3E  0x005C726E  radar mask width (640.0)
-0x005C6F4E  0x005C727E  radar mask width (640.0)
-0x005C6F56  0x005C7286  radar mask height (480.0)
-0x005C6F66  0x005C7296  radar mask height (480.0)
-0x0051AE28  0x0051B198  HUD element position (HudHook)
-0x0051D2E5  0x0051D655  radar blip position (BlipsHook)
-0x004C6589  0x004C6759  HUD element position (HudHook2)
-0x00504D5F  0x0050516F  stop sign position (StopSignHook)
-0x005366C2  0x00536A32  4:3 quad extents, sub_005364E0 (EA Games / THX logos)
-0x005368E6  0x00536C56  4:3 quad extents, sub_005366E0 (NFSU2 title card + loading screens)
-0x00536BD1  0x00536F41  4:3 quad extents, sub_00536910
-0x0053656C  0x005368DC  4:3 quad position Y, sub_005364E0 (after mov [esp+78h], 240.0)
-0x00536743  0x00536AB3  4:3 quad position Y, sub_005366E0 (after mov [esp+88h], 240.0)
-0x00536973  0x00536CE3  4:3 quad position Y, sub_00536910 (after mov [esp+98h], 240.0)
-0x00536CB5  0x00537025  4:3 quad position Y, sub_00536BF0 (after mov [esp+78h], 240.0)
-0x005C7C34  0x005C7F64  3D view scale per view id (FixFOV)
-0x005C7CBE  0x005C7FEE  FixFOV constant 1 (fdivr 1.0)
-0x005C7CD0  0x005C8000  FixFOV constant 2 (fmul 0.5)
-0x005C7CF5  0x005C8025  FixFOV constant 3 (fdivr 1.0)
-0x005D2962  0x005D2C12  particle frame time pushed as 1/60 (FPSLimit; push 0x3C888889)
+# v10      v12         v12b        purpose
+0x0051B05F  0x0051B3CF  0x0051B3CF  HUD anchor X after mov [esp+A0h], 320.0
+0x0053655C  0x005368CC  0x005368DC  HUD anchor X after mov [esp+74h], 320.0
+0x0053672D  0x00536A9D  0x00536AAD  HUD anchor X after mov [esp+84h], 320.0
+0x0053695D  0x00536CCD  0x00536CDD  HUD anchor X after mov [esp+94h], 320.0
+0x00536CA5  0x00537015  0x00537025  HUD anchor X after mov [esp+74h], 320.0
+0x0050B099  0x0050B4F9  0x0050B4F9  HUD anchor X after mov [esp+1A0h], 320.0
+0x0048B5D4  0x0048B644  0x0048B644  HUD anchor X after mov [0082D2D8h], 320.0
+0x005CBDCD  0x005CC0FD  0x005CC10D  rear-view mirror right X1 (440.0)
+0x005CBDDD  0x005CC10D  0x005CC11D  rear-view mirror left X1 (200.0)
+0x005CBDED  0x005CC11D  0x005CC12D  rear-view mirror left X2 (200.0)
+0x005CBDFD  0x005CC12D  0x005CC13D  rear-view mirror right X2 (440.0)
+0x005CBBC9  0x005CBEF9  0x005CBF09  cutscene border width (640.0)
+0x005CBBD9  0x005CBF09  0x005CBF19  cutscene border width (640.0)
+0x005CBB5D  0x005CBE8D  0x005CBE9D  cutscene border width (640.0)
+0x005CBB75  0x005CBEA5  0x005CBEB5  cutscene border width (640.0)
+0x005C6F3E  0x005C726E  0x005C727E  radar mask width (640.0)
+0x005C6F4E  0x005C727E  0x005C728E  radar mask width (640.0)
+0x005C6F56  0x005C7286  0x005C7296  radar mask height (480.0)
+0x005C6F66  0x005C7296  0x005C72A6  radar mask height (480.0)
+0x0051AE28  0x0051B198  0x0051B198  HUD element position (HudHook)
+0x0051D2E5  0x0051D655  0x0051D665  radar blip position (BlipsHook)
+0x004C6589  0x004C6759  0x004C6759  HUD element position (HudHook2)
+0x00504D5F  0x0050516F  0x0050516F  stop sign position (StopSignHook)
+0x005366C2  0x00536A32  0x00536A42  4:3 quad extents, sub_005364E0 (EA Games / THX logos)
+0x005368E6  0x00536C56  0x00536C66  4:3 quad extents, sub_005366E0 (NFSU2 title card + loading screens)
+0x00536BD1  0x00536F41  0x00536F51  4:3 quad extents, sub_00536910
+0x0053656C  0x005368DC  0x005368EC  4:3 quad position Y, sub_005364E0 (after mov [esp+78h], 240.0)
+0x00536743  0x00536AB3  0x00536AC3  4:3 quad position Y, sub_005366E0 (after mov [esp+88h], 240.0)
+0x00536973  0x00536CE3  0x00536CF3  4:3 quad position Y, sub_00536910 (after mov [esp+98h], 240.0)
+0x00536CB5  0x00537025  0x00537035  4:3 quad position Y, sub_00536BF0 (after mov [esp+78h], 240.0)
+0x005C7C34  0x005C7F64  0x005C7F74  3D view scale per view id (FixFOV)
+0x005C7CBE  0x005C7FEE  0x005C7FFE  FixFOV constant 1 (fdivr 1.0)
+0x005C7CD0  0x005C8000  0x005C8010  FixFOV constant 2 (fmul 0.5)
+0x005C7CF5  0x005C8025  0x005C8035  FixFOV constant 3 (fdivr 1.0)
+0x005D2962  0x005D2C12  0x005D2C22  particle frame time pushed as 1/60 (FPSLimit; push 0x3C888889)

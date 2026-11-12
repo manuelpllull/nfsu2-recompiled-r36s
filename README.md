@@ -156,16 +156,16 @@ Current state as of **October 2026**:
 
 ## Tested Game Build
 
-The port can be built from either of these unpacked (No-CD) `SPEED2.EXE` builds: the original release (v1.0) and the final patch (v1.2), which is the same code plus the patch changes, relinked. Functions sit at different offsets, so each build is lifted from its own exe, and the hand-written native code, hooks and overrides take that exe's addresses automatically (`config/exe_variants.txt`, `config/exe_functions.txt`).
+The port can be built from any of these unpacked (No-CD) `SPEED2.EXE` builds: the original release (v1.0) and the final patch (v1.2), which is the same code plus the patch changes, relinked; `v12b` is a second v1.2 exe whose code is laid out slightly differently from `v12`. Functions sit at different offsets, so each build is lifted from its own exe, and the hand-written native code, hooks and overrides take that exe's addresses automatically (`config/exe_variants.txt`, `config/exe_functions.txt`).
 
-| Property | v10 | v12 |
-|---|---|---|
-| **What it is** | v1.0 (`Oct 17 2004`), the exe this port was first lifted from (region unconfirmed) | v1.2 (`Feb 9 2005`), European retail with SecuROM removed |
-| **Exact File Size** | `4,788,224` bytes | `4,800,512` bytes |
-| **SHA-256** | `04b83e2d13c91c6ec294b578a08240ebcfff6fa9513df584edaa968e4ab9990c` | `f9dd86c054878ce6276beb07c1fd61874f7a1e4bf1f241b084c65b73e24168a7` |
-| **MD5** | `95b4dc3e9a6c72b06a8bd62b0c56ea63` | `6445adbf4e8d64be51e96a69bba168a4` |
-| **PE Entry Point** | `0x0075B9F1` | `0x0075BCC7` |
-| **Binary Format** | Unpacked image (`.text` clean code, rebuilt imports, relocations preserved) | same |
+| Property | v10 | v12 | v12b |
+|---|---|---|---|
+| **What it is** | v1.0 (`Oct 17 2004`), the exe this port was first lifted from (region unconfirmed) | v1.2 (`Feb 9 2005`), European retail with SecuROM removed | v1.2 (`Feb 9 2005`), another unpacked exe of the same build stamp (region unconfirmed); build it yourself, the release has no binary for it |
+| **Exact File Size** | `4,788,224` bytes | `4,800,512` bytes | `4,788,224` bytes (same as v10) |
+| **SHA-256** | `04b83e2d13c91c6ec294b578a08240ebcfff6fa9513df584edaa968e4ab9990c` | `f9dd86c054878ce6276beb07c1fd61874f7a1e4bf1f241b084c65b73e24168a7` | `08577b93d4b954c74679b6387792a9aca6c9434513fbc4eaeffdb343650bb899` |
+| **MD5** | `95b4dc3e9a6c72b06a8bd62b0c56ea63` | `6445adbf4e8d64be51e96a69bba168a4` | `6f236382dfee70bfcfcfe9d4fbbd0507` |
+| **PE Entry Point** | `0x0075B9F1` | `0x0075BCC7` | `0x0075BCC7` |
+| **Binary Format** | Unpacked image (`.text` clean code, rebuilt imports, relocations preserved) | same | same |
 
 > [!IMPORTANT]
 > A build runs only with the exe it was lifted from: `scripts/run_lift.py` recognises the exe by its hash, and the launcher and runtime refuse a different one (an exe of the other build would run its data into the wrong code). Other builds (another v1.0 exe, v1.1) are not supported unless they match one of these hashes.
@@ -237,7 +237,7 @@ git -C ../pcrecomp checkout 35548b8
 git -C ../pcrecomp am --3way "$PWD"/patches/pcrecomp/*.patch
 cp ports/r36s/sdk/include/recomp32/*.h ports/r36s/sdk/include/recomp32/*.c ../pcrecomp/runtime/recomp32/
 
-python scripts/exe_variant.py detect "$GAME/SPEED2.EXE"                       # v10 or v12
+python scripts/exe_variant.py detect "$GAME/SPEED2.EXE"                       # v10, v12 or v12b
 python scripts/normalize_exe.py "$GAME/SPEED2.EXE" work/SPEED2.analysis.exe   # analysis copy (relocations restored)
 python ../pcrecomp/tools/cpp/vtable_scan.py work/SPEED2.analysis.exe --seeds work/vtable_seeds.json
 python ../pcrecomp/tools/cpp/rtti.py        work/SPEED2.analysis.exe --seeds work/rtti_seeds.json

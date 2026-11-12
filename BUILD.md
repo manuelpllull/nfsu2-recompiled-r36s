@@ -29,6 +29,11 @@ it, compiles the game code and the port's runtime, and writes `nfsu2.aarch64`.
 |---|---|---|---|
 | `v10` | v1.0 (Oct 2004) | 4,788,224 bytes | `f4bb0d9942815bb6e054e773994710c612acbc34` |
 | `v12` | v1.2 (Feb 2005), European retail | 4,800,512 bytes | `c92e5c568a42dbf2d733e0d9b9dc9ca09794a36c` |
+| `v12b` | v1.2 (Feb 2005), another unpacked exe | 4,788,224 bytes | `3e4952823d7a98e83688e3471c847e6b175bc2f7` |
+
+The release has binaries for `v10` and `v12` only; for `v12b` build your own with this guide. It has the size
+of `v10`, so the launcher cannot tell the two apart by size: with a `v12b` exe, remove `nfsu2.aarch64.v10`
+from the port folder so that your `nfsu2.aarch64` is the one used.
 
 The retail `SPEED2.EXE` straight from the disc (5,987,978 bytes, protected by SecuROM) **cannot** be used:
 its code is encrypted in the file and only decrypted in memory after the disc check. `build.py` tells you
@@ -231,7 +236,7 @@ git -C ../pcrecomp checkout 35548b8
 git -C ../pcrecomp am --3way "$PWD"/patches/pcrecomp/*.patch
 cp ports/r36s/sdk/include/recomp32/*.h ports/r36s/sdk/include/recomp32/*.c ../pcrecomp/runtime/recomp32/
 
-python scripts/exe_variant.py detect "$GAME/SPEED2.EXE"                       # v10 or v12
+python scripts/exe_variant.py detect "$GAME/SPEED2.EXE"                       # v10, v12 or v12b
 python scripts/normalize_exe.py "$GAME/SPEED2.EXE" work/SPEED2.analysis.exe
 python ../pcrecomp/tools/cpp/vtable_scan.py work/SPEED2.analysis.exe --seeds work/vtable_seeds.json
 python ../pcrecomp/tools/cpp/rtti.py        work/SPEED2.analysis.exe --seeds work/rtti_seeds.json
