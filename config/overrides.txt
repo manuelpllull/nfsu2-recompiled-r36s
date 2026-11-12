@@ -3,6 +3,6 @@
 # One column per exe of config/exe_variants.txt. These two were first written for the v12
 # exe; until 2026-10-24 the file held only those addresses, which are not function starts in
 # v10, so a v10 lift did not apply them.
-# v10      v12        reason
-0x006F5D25  0x006F5FC5  Cyrix probe (sahf/div/lahf): DIV flags are undefined and not modelled
-0x0075CCF0  0x0075CFD0  CRT memcpy/memmove: computed jumps into unrolled blocks are not all lifted entries
+# v10      v12         v12b        reason
+0x006F5D25  0x006F5FC5  0x006F5FC5  Cyrix probe (sahf/div/lahf): DIV flags are undefined and not modelled
+0x0075CCF0  0x0075CFD0  0x0075CFD0  CRT memcpy/memmove: computed jumps into unrolled blocks are not all lifted entries

@@ -1,5 +1,5 @@
 # Catalog entries that are not code. Excluded entries still get a body, but it
 # is a loud RECOMP_UNIMPL instead of lifted garbage. One column per exe of
 # config/exe_variants.txt (the v12 entry was found first; v10 is the same bytes).
-# v10      v12        reason
-0x006D5390  0x006D5610  data decoded as code: sldt/daa/das/aaa/bound/arpl/insb/lcall in one body
+# v10      v12         v12b        reason
+0x006D5390  0x006D5610  0x006D5610  data decoded as code: sldt/daa/das/aaa/bound/arpl/insb/lcall in one body

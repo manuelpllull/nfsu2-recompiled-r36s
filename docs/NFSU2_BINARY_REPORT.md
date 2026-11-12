@@ -1,7 +1,8 @@
 # SPEED2.EXE binary report
 
-Two unpacked `SPEED2.EXE` builds are supported, v1.0 and v1.2 (`config/exe_variants.txt`). Each build of the port is
-lifted from one of them; see "Second exe" below for how they differ and how the hand-written code follows.
+Three unpacked `SPEED2.EXE` files are supported, one v1.0 and two v1.2 (`config/exe_variants.txt`). Each build of the
+port is lifted from one of them; see "Second exe" and "Third exe" below for how they differ and how the hand-written
+code follows.
 
 ## v10: the exe the port was first lifted from
 The binary the 27,758 catalogued functions of the original lift (`src/recomp/gen/`, `catalog.json`) came from:
@@ -69,6 +70,32 @@ Found on the way (both exes):
 - `widescreen.c` wrote the HUD X scale to both 0x79AC0C and 0x79AC10, clobbering the neighbouring
   constant of whichever exe ran; it now writes the running exe's address only.
 - The seven 4:3 FMV/title-card hook cases in `widescreen.c` had v10 addresses only.
+
+## Third exe: v12b
+
+Another unpacked v1.2 exe: 4,788,224 bytes, sha1 `3e4952823d7a98e83688e3471c847e6b175bc2f7`, sha256
+`08577b93d4b954c74679b6387792a9aca6c9434513fbc4eaeffdb343650bb899`. It carries the v12 build stamp
+(`Change 126890`, `Feb  9 2005`) and has v12's entry point (0x0075BCC7), section table and `.text` size (0x381AF1),
+and keeps the original `.reloc` blocks in an unnamed section at RVA 0x4F5000, as v10 does. Its region is not
+confirmed. It is not v12 unpacked differently; the layout differs in two places:
+
+- **Code** from about 0x0051C000 to 0x0068FFFF sits 0x10 higher than in v12; before and after that range the
+  addresses are v12's (0x0051B3CF and 0x006D5610 are where v12 has them, 0x0051D665 and 0x0068CE8C are not).
+- **`.rdata`**: the three constants `widescreen.c` writes sit 8 higher (fHudPosX 0x00797D58, fHudPosX_x2
+  0x00797D60, fHudScaleX 0x0079AC18); `.rdata` before 0x0078FA1C and every `.data` address the hand-written
+  code uses are where v12 has them.
+
+No v12 exe was at hand when this column was written, so `scripts/exe_variant.py check` was not run for it and
+the functions that differ from v12 are not identified. The column is the v12 one plus the shifts above, and
+every row was checked in the v12b exe alone: the 47 `func` rows are function starts of its catalogue, the 55
+k_fxMethods rows are the slots of the effect vtable at 0x007B6FE8, the shader jump table at 0x005C5BF8 holds
+the four case rows, the hook sites carry the WidescreenFix byte patterns (`scripts/widescreen_sites.py`), the
+data rows are the operands of the instructions those patterns find, and the other data addresses named in
+`src/runtime` and `android/app/src/main/cpp` were checked against the v12b code and data (operands and
+values). Someone with both exes can confirm it with `python scripts/exe_variant.py check v12.exe v12b.exe`.
+
+The lift builds and the result runs on a TrimUI Brick Pro; under Xvfb with software GLES it reaches the title,
+the menus and a quick race.
 
 ## Sections
 

@@ -2,7 +2,7 @@
 # SHA-1 (or, for the normalised analysis copy, the SHA-1 of its .text section) and uses that
 # column of config/hooks.txt, overrides.txt, exclude.txt and exe_functions.txt.
 #
-# Both are unpacked (No-CD) images of the same game; v12 is v10 plus the v1.2 patch, relinked.
+# All are unpacked (No-CD) images of the same game; v12 is v10 plus the v1.2 patch, relinked.
 # Section addresses are identical; functions sit at different offsets and a few .rdata items
 # moved (see docs/NFSU2_BINARY_REPORT.md).
 #
@@ -11,7 +11,13 @@
 # v12  v1.2 (build stamp "Change 126890", Feb 9 2005): the European retail exe with SecuROM
 #      removed; every code pointer in its .rdata is identical to the retail (SecuROM) European
 #      SPEED2.EXE, sha1 6f5dfa7d0653db2511ea0bab80eea5a94502a50c.
+# v12b another v1.2 exe with the same build stamp ("Change 126890", Feb 9 2005), entry point and
+#      .text size as v12 (4,788,224 bytes, the original .reloc blocks kept in an unnamed section at
+#      RVA 0x4F5000, as in v10), but not the same code layout: code from about 0x0051C000 to
+#      0x0068FFFF sits 0x10 higher than in v12, and the three .rdata constants widescreen.c writes
+#      sit 8 higher. It has its own address column (docs/NFSU2_BINARY_REPORT.md, "Third exe").
 #
 # id    column  size      sha1                                      text_sha1                                 md5                               sha256
 v10     1       4788224   f4bb0d9942815bb6e054e773994710c612acbc34  5c21bdc05a8b621696f31fc042fbe8258555eb59  95b4dc3e9a6c72b06a8bd62b0c56ea63  04b83e2d13c91c6ec294b578a08240ebcfff6fa9513df584edaa968e4ab9990c
 v12     2       4800512   c92e5c568a42dbf2d733e0d9b9dc9ca09794a36c  ac7600820c65ba9090df23ccb838265bf68eb2d3  6445adbf4e8d64be51e96a69bba168a4  f9dd86c054878ce6276beb07c1fd61874f7a1e4bf1f241b084c65b73e24168a7
+v12b    3       4788224   3e4952823d7a98e83688e3471c847e6b175bc2f7  a29575c90fdc296511043f039e6757dafc313ee6  6f236382dfee70bfcfcfe9d4fbbd0507  08577b93d4b954c74679b6387792a9aca6c9434513fbc4eaeffdb343650bb899

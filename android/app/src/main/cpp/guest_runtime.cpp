@@ -136,7 +136,8 @@ std::vector<uint32_t> freeThreadEntries;
 // in v1.0 to 0x007263C7 in v1.2). With the v1.0 address on v1.2 the thread never ran free: it took turns with the
 // game thread under the machine, which then waited ~6 ms per frame for it (~25 fps instead of ~27) and the
 // sound thread was starved.
-#if defined(NFS_EXE_VARIANT) && NFS_EXE_VARIANT==2
+#if defined(NFS_EXE_VARIANT) && defined(NFS_EXE_V12) && \
+    (NFS_EXE_VARIANT == NFS_EXE_V12 || (defined(NFS_EXE_V12B) && NFS_EXE_VARIANT == NFS_EXE_V12B))
 #define NFS_SOUND_THREAD_ENTRY "7263c7,726117"
 #else
 #define NFS_SOUND_THREAD_ENTRY "726117,7263c7"
