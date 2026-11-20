@@ -12,7 +12,8 @@
 //   R1 nitrous, L1 look back, R2/L2 shift up/down (manual gearbox), Start pause, Select reset car,
 //   left stick steer. D-pad as on the consoles: Up engage event / enter shop (Enter), Down career status (1),
 //   Left world map (M), Right SMS (Tab).
-// Menus: d-pad / left stick move, Cross or Start accept, Circle or Triangle back, Square = Space.
+// Menus: d-pad / left stick move, Cross or Start accept, Circle or Triangle back, Square = Space,
+//   L1 = joystick button 2 (world map: Activate GPS).
 #include <SDL.h>
 #include <array>
 #include <cmath>
@@ -75,11 +76,14 @@ public:
     }
     bool held(Button b) const { return buttons_[b]; }
 
-    // The guest joystick: left stick X while driving (proportional steering), nothing else.
+    // The guest joystick: left stick X while driving (proportional steering). In menus L1 presses
+    // joystick button 2, which the game's PC joystick bindings turn into the front end's PAD_BUTTON1:
+    // on the world map that is "Activate GPS" (a mouse click on the PC, no key binding).
     void padState(float axes[6], uint32_t& buttons, int& hatX, int& hatY) const {
         for (int i = 0; i < 6; ++i) axes[i] = 0;
         axes[0] = driving_ ? stickX_ : 0.0f;
         buttons = 0;
+        if (!driving_ && buttons_[L1]) buttons |= 1u << 2;
         hatX = hatY = 0;
     }
 
