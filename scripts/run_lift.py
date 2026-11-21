@@ -42,13 +42,27 @@ def cmd_catalog(exe, seeds_path, out):
     iat = build_iat_map(info)
     data = open(exe, "rb").read()
     seeds = {info.image_base + info.entry_point_rva}
+    forced = set()   # config/seeds-<variant>.txt: entries that must be in the catalog whatever decodes over them
     for e in json.load(open(seeds_path)):
         a = e.get("address") if isinstance(e, dict) else e
-        seeds.add(int(a, 0) if isinstance(a, str) else a)
+        a = int(a, 0) if isinstance(a, str) else a
+        seeds.add(a)
+        if isinstance(e, dict) and e.get("note") == "config seed":
+            forced.add(a)
     dis = Disassembler(data, info.image_base, info.sections)
     t = time.time()
     funcs = dis.find_functions(info.code_start, info.code_end, iat, seeds=seeds,
                                release_operands=True)
+    for a in sorted(forced - set(funcs)):
+        # find_functions dropped it as "inside another instruction": the straddling body is a false
+        # decode of data (a switch table before a function only a one-slot vtable names).
+        f = dis.disassemble_function(a, iat)
+        if f and f.blocks:
+            f.entry_kind = "start"
+            funcs[a] = f
+            print(f"[*] forced config seed 0x{a:08X} ({f.size} bytes)")
+        else:
+            print(f"[*] WARNING: forced config seed 0x{a:08X} does not decode")
     print(f"[*] {len(funcs)} functions in {time.time() - t:.0f}s")
     doc = {"exe": os.path.basename(exe), "image_base": info.image_base,
            "code_start": info.code_start, "code_end": info.code_end,

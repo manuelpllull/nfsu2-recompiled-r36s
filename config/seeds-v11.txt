@@ -1,0 +1,6 @@
+# Extra function entries for the v11 (v1.1) catalog, one VA per line. The vtable scan misses these.
+# 0x004C4E20: scalar deleting destructor, the only method of the vtable at 0x00795914; its bytes read
+#             " NL\0" and the vtable is followed by the string "DemoLegalScreen", so it does not look like a
+#             vtable. A data run before it (switch table at 0x004C4E00) was decoded as a function that swallowed
+#             it: "ICALL unresolved 0x004c4e20" when the profile is loaded.
+0x004C4E20
