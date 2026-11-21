@@ -12,6 +12,11 @@
 #      removed; every code pointer in its .rdata is identical to the retail (SecuROM) European
 #      SPEED2.EXE, sha1 6f5dfa7d0653db2511ea0bab80eea5a94502a50c.
 #
+# v11  v1.1 (build stamp "Change 117143", Oct 29 2004): the WidescreenFix "1.1 exe". Same size as v10; mapped
+#      from v10 by region shifts verified instruction by instruction (code +0/+0x130/+0x3A0/+0x2D0/+0x280/+0x210;
+#      data identical except 0x7D7D3C -> 0x7D7D4C).
+#
 # id    column  size      sha1                                      text_sha1                                 md5                               sha256
 v10     1       4788224   f4bb0d9942815bb6e054e773994710c612acbc34  5c21bdc05a8b621696f31fc042fbe8258555eb59  95b4dc3e9a6c72b06a8bd62b0c56ea63  04b83e2d13c91c6ec294b578a08240ebcfff6fa9513df584edaa968e4ab9990c
 v12     2       4800512   c92e5c568a42dbf2d733e0d9b9dc9ca09794a36c  ac7600820c65ba9090df23ccb838265bf68eb2d3  6445adbf4e8d64be51e96a69bba168a4  f9dd86c054878ce6276beb07c1fd61874f7a1e4bf1f241b084c65b73e24168a7
+v11     3       4788224   f3c1c14fb6dce46364bf5cee589d2f242e515d4a  5eadca3606108a2cf242c2cd4a82ba1c60011fec  e92e984afb427410cd7b404bc589fd42  fa940fe56c8af619a62e6c9cba5c552a01832424a7ee2189af9814d3c531a38f
