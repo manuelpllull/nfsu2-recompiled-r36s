@@ -4,3 +4,8 @@
 #             vtable. A data run before it (switch table at 0x004C4E00) was decoded as a function that swallowed
 #             it: "ICALL unresolved 0x004c4e20" when the profile is loaded.
 0x004C4E20
+# 0x00470030: callback in the table at 0x007ED2E0 (fn, flags, name); data at 0x00470010 before it decoded as a
+#             function from 0x00470023 that swallowed it: "ICALL unresolved 0x00470030" loading the race.
+0x00470030
+# 0x0043CB30: comparison callback, push 0x43CB30 at 0x0044008E (qsort); no catalog entry.
+0x0043CB30
