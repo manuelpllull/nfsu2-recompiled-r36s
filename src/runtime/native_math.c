@@ -327,7 +327,7 @@ static inline double tableLookup(uint32_t self, uint32_t argSlot, float* tfOut) 
     const int32_t i = (int32_t)(uint32_t)ftolValue(t, 0);
     const uint32_t table = M32(self + 0x10);
     if (i < 0) return MF(table);
-    if ((double)tf < (double)MF(0x7d7d3c)) return MF(table);
+    if ((double)tf < (double)MF(NFS_VA(0x007D7D3C))) return MF(table);
     const int32_t count = (int32_t)M32(self);
     if (!(i < count - 1)) return MF(table + (uint32_t)count * 4 - 4);
     double f = (double)i;
@@ -368,7 +368,7 @@ static inline double edgeVal(uint32_t c, uint32_t p, uint32_t ax, uint32_t ay, u
     return a - b;
 }
 static inline double quadTest(uint32_t c, uint32_t p, float* last) {
-    const double C = MF(0x7842a0), Z = MF(0x7d7d3c);
+    const double C = MF(0x7842a0), Z = MF(NFS_VA(0x007D7D3C));
     double m;
     float s = (float)edgeVal(c, p, 0x30, 0x34, 0x40, 0x44);
     if (C > (double)s) m = C;
@@ -465,7 +465,7 @@ static uint32_t frustumTest(uint32_t self, uint32_t A, uint32_t B, uint32_t Mx) 
     float mn[3], mx[3];
     memcpy(mn, (const void*)ADDR(A), 12); memcpy(mx, (const void*)ADDR(B), 12);
     if (Mx) aabbXform(Mx, mn, mx);
-    const double k = MF(0x784260), Z = MF(0x7d7d3c);
+    const double k = MF(0x784260), Z = MF(NFS_VA(0x007D7D3C));
     float c[3], h[3];
     for (int j = 0; j < 3; ++j) c[j] = (float)(((double)mx[j] + mn[j]) * k);
     for (int j = 0; j < 3; ++j) h[j] = (float)((double)mx[j] - c[j]);

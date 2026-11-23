@@ -136,7 +136,9 @@ std::vector<uint32_t> freeThreadEntries;
 // in v1.0 to 0x007263C7 in v1.2). With the v1.0 address on v1.2 the thread never ran free: it took turns with the
 // game thread under the machine, which then waited ~6 ms per frame for it (~25 fps instead of ~27) and the
 // sound thread was starved.
-#if defined(NFS_EXE_VARIANT) && NFS_EXE_VARIANT==2
+#if defined(NFS_EXE_VARIANT) && NFS_EXE_VARIANT==3
+#define NFS_SOUND_THREAD_ENTRY "726397,726117"   /* v1.1: 0x00726117 + 0x280 */
+#elif defined(NFS_EXE_VARIANT) && NFS_EXE_VARIANT==2
 #define NFS_SOUND_THREAD_ENTRY "7263c7,726117"
 #else
 #define NFS_SOUND_THREAD_ENTRY "726117,7263c7"
@@ -704,7 +706,7 @@ void loadImage(const char* path) {
         nt.FileHeader.SizeOfOptionalHeader<sizeof(pe_opt_header32)) throw GuestStop("Expected x86 PE32");
     auto opt=nt.OptionalHeader; imageBase=opt.ImageBase; imageSize=opt.SizeOfImage;
     resourceRva=opt.DataDirectory[2].VirtualAddress;resourceSize=opt.DataDirectory[2].Size;
-    if (imageBase!=0x400000 || (opt.AddressOfEntryPoint!=0x35bcc7 && opt.AddressOfEntryPoint!=0x35b9f1))
+    if (imageBase!=0x400000 || (opt.AddressOfEntryPoint!=0x35bcc7 && opt.AddressOfEntryPoint!=0x35b9f1 && opt.AddressOfEntryPoint!=0x35bc01 /* v1.1 */))
         throw GuestStop("PE layout does not match generated NFSU2 code");
     // The lifted code (recomp_variant.c, written by run_lift.py), the native helpers (nfs_exe_addr.h) and the
     // SPEED2.EXE mapped here must all be the same build: a lift of one exe runs the other's data into wrong code.

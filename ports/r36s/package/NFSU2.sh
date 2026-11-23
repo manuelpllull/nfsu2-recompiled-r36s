@@ -1,7 +1,7 @@
 #!/bin/bash
 # PortMaster Launch Script for Need for Speed: Underground 2 (Recompiled)
-# Target Devices: R36S, RG351MP, RGB20S, RK2020 (Rockchip RK3326 ARM64)
-# Supported OS: ArkOS, AmberELEC, ROCKNIX, TheRA
+# Target Devices: R36S, RG351MP, RGB20S, RK2020 (Rockchip RK3326 ARM64), Anbernic RG40XX H/V, RG35XX (Allwinner H700)
+# Supported OS: ArkOS, AmberELEC, ROCKNIX, TheRA, Knulli, muOS
 
 XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 
@@ -22,7 +22,12 @@ if [ -f "$controlfolder/control.txt" ]; then
   [ -f "${controlfolder}/mod_${CFW_NAME}.txt" ] && source "${controlfolder}/mod_${CFW_NAME}.txt"
   get_controls
 fi
-ESUDO="${ESUDO:-sudo}"
+# Root firmwares (Knulli, muOS, ROCKNIX) run ports as root and have no sudo: never call sudo there.
+if [ "$(id -u)" = "0" ]; then
+  ESUDO=""
+elif [ -z "${ESUDO+x}" ]; then
+  ESUDO="sudo"
+fi
 
 CURR_TTY="/dev/tty1"
 exec < "$CURR_TTY"
@@ -55,8 +60,22 @@ export DEVICE_ARCH="aarch64"
 export LD_LIBRARY_PATH="$GAMEDIR/libs:$LD_LIBRARY_PATH"
 [ -n "$sdl_controllerconfig" ] && export SDL_GAMECONTROLLERCONFIG="$sdl_controllerconfig"
 
-# R36S Mali-G31 ArkOS driver bindings
-export SDL_VIDEODRIVER=kmsdrm
+# Video backend.
+# ArkOS / ROCKNIX / Knulli (RK3326, mainline H700): DRM device present -> KMSDRM.
+# muOS on H700 (RG40XX H/V, RG35XX): stock Anbernic kernel with the Mali fbdev blob, no /dev/dri ->
+# let the firmware's own SDL2 pick its Mali/fbdev backend. NFSU2_VIDEODRIVER in nfsu2.cfg overrides.
+[ -f "$GAMEDIR/nfsu2.cfg" ] && NFSU2_VIDEODRIVER="$(sed -n 's/^NFSU2_VIDEODRIVER=//p' "$GAMEDIR/nfsu2.cfg" | tr -d '"\r')"
+if [ -n "$NFSU2_VIDEODRIVER" ]; then
+  export SDL_VIDEODRIVER="$NFSU2_VIDEODRIVER"
+elif [ -e /dev/dri/card0 ] || [ -e /dev/dri/card1 ]; then
+  export SDL_VIDEODRIVER=kmsdrm
+else
+  unset SDL_VIDEODRIVER
+  # The bundled libs/libSDL2 is built for KMSDRM; on fbdev firmwares use the system SDL2 instead.
+  for sdl in /usr/lib/libSDL2-2.0.so.0 /usr/lib/aarch64-linux-gnu/libSDL2-2.0.so.0 /usr/lib64/libSDL2-2.0.so.0; do
+    if [ -f "$sdl" ]; then export LD_PRELOAD="$sdl${LD_PRELOAD:+:$LD_PRELOAD}"; break; fi
+  done
+fi
 export SDL_AUDIODRIVER=alsa
 export ALSOFT_DRIVERS=alsa
 export SDL_VIDEO_GL_DRIVER=libGLESv2.so
@@ -68,7 +87,7 @@ export MALLOC_CHECK_=0
 # Clocks: CPU, GPU (Mali) and memory controller (DMC) at their top step while the game runs. The RK3326
 # devfreq governors otherwise keep the GPU and DRAM clocks low, and this game is bound by CPU and memory.
 # The previous governors are restored on exit.
-SUDO="${ESUDO:-sudo}"
+SUDO="$ESUDO"
 CLOCK_STATE=""
 for gov in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor \
            /sys/class/devfreq/*/governor; do
@@ -86,17 +105,24 @@ trap restore_clocks EXIT
 # R36S 1GB RAM Protection:
 # Free reclaimable page caches to maximize contiguous memory before launching
 sync
-echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null 2>&1 || true
+echo 3 | $ESUDO tee /proc/sys/vm/drop_caches > /dev/null 2>&1 || true
 
 # Ensure safety swapfile to prevent OOM Killer from terminating the game during high texture loads
 SWAP_TOTAL=$(free -m | awk '/Swap:/ {print $2}')
 if [ -z "$SWAP_TOTAL" ] || [ "$SWAP_TOTAL" -lt 256 ]; then
   echo "[PortMaster] Ensuring 512MB safety swap on SD card..."
   if [ ! -f "$GAMEDIR/.swapfile" ]; then
-    dd if=/dev/zero of="$GAMEDIR/.swapfile" bs=1M count=512 status=none
+    dd if=/dev/zero of="$GAMEDIR/.swapfile" bs=1M count=512 2>/dev/null
+    chmod 600 "$GAMEDIR/.swapfile" 2>/dev/null
     mkswap "$GAMEDIR/.swapfile" >/dev/null 2>&1
   fi
-  sudo swapon "$GAMEDIR/.swapfile" >/dev/null 2>&1 && SWAP_ADDED=1
+  if $ESUDO swapon "$GAMEDIR/.swapfile" >/dev/null 2>&1; then
+    SWAP_ADDED=1
+  else
+    # The card's file system cannot hold swap (exFAT): drop the file instead of leaving 512 MB behind
+    rm -f "$GAMEDIR/.swapfile"
+    echo "[NFSU2] swap file not usable on this card; running without extra swap" >> "$GAMEDIR/log.txt"
+  fi
 fi
 
 # Verify game assets presence
@@ -123,11 +149,29 @@ EXESIZE=$(stat -c%s "$EXE" 2>/dev/null || wc -c < "$EXE" | tr -d ' ')
 # The release ships one binary per supported exe (nfsu2.aarch64.v10, nfsu2.aarch64.v12): take the one for
 # this SPEED2.EXE. Otherwise a binary built yourself (build.py), plain nfsu2.aarch64, is used.
 BIN=""
+# v1.1 (WidescreenFix "1.1 exe", Change 117143) has the same size as v1.0: tell them apart by MD5.
+EXEMD5=""
+[ "$EXESIZE" = "4788224" ] && EXEMD5=$(md5sum "$EXE" 2>/dev/null | cut -d' ' -f1)
 case "$EXESIZE" in
-  4788224) [ -f "$GAMEDIR/nfsu2.aarch64.v10" ] && BIN="nfsu2.aarch64.v10" ;;
+  4788224) if [ "$EXEMD5" = "e92e984afb427410cd7b404bc589fd42" ]; then
+             [ -f "$GAMEDIR/nfsu2.aarch64.v11" ] && BIN="nfsu2.aarch64.v11"
+           else
+             [ -f "$GAMEDIR/nfsu2.aarch64.v10" ] && BIN="nfsu2.aarch64.v10"
+           fi ;;
   4800512) [ -f "$GAMEDIR/nfsu2.aarch64.v12" ] && BIN="nfsu2.aarch64.v12" ;;
 esac
 [ -n "$BIN" ] || BIN="nfsu2.aarch64"
+if [ ! -f "$GAMEDIR/$BIN" ]; then
+  printf "\033c" > "$CURR_TTY" 2>/dev/null || true
+  printf "======================================================================\n" > "$CURR_TTY" 2>/dev/null || true
+  printf " ERROR: game binary not found: %s/%s\n" "$GAMEDIR" "$BIN" > "$CURR_TTY" 2>/dev/null || true
+  printf " Copy nfsu2.aarch64.v10 / nfsu2.aarch64.v12 and the libs/ folder\n" > "$CURR_TTY" 2>/dev/null || true
+  printf " from the port release into %s\n" "$GAMEDIR" > "$CURR_TTY" 2>/dev/null || true
+  printf "======================================================================\n" > "$CURR_TTY" 2>/dev/null || true
+  echo "[NFSU2] binary $BIN missing (SPEED2.EXE $EXESIZE bytes)" >> "$GAMEDIR/log.txt"
+  sleep 6
+  exit 1
+fi
 chmod 755 "$GAMEDIR/$BIN" 2>/dev/null || true
 BUILT=$(grep -a -o -m1 'NFSU2_EXE_BUILT_FOR=[a-z0-9]*:[0-9]*' "$GAMEDIR/$BIN" 2>/dev/null | head -n1 | cut -d= -f2)
 WANT_ID="${BUILT%%:*}"; WANT_SIZE="${BUILT##*:}"
@@ -136,6 +180,13 @@ if [ -z "$BUILT" ]; then
 fi
 [ "$WANT_ID" = "v12" ] && export NFSU2_PARALLEL_THREADS="${NFSU2_PARALLEL_THREADS:-7263c7}"
 echo "[NFSU2] SPEED2.EXE: $EXESIZE bytes; $BIN was built for $WANT_ID ($WANT_SIZE bytes)" >> "$GAMEDIR/log.txt" 2>&1
+if [ "$WANT_ID" = "v11" ] && [ "$EXEMD5" != "e92e984afb427410cd7b404bc589fd42" ]; then WANT_SIZE="mismatch"; fi
+if [ "$WANT_ID" = "v10" ] && [ "$EXEMD5" = "e92e984afb427410cd7b404bc589fd42" ]; then
+  printf "\033c" > "$CURR_TTY" 2>/dev/null || true
+  printf " ERROR: this SPEED2.EXE is v1.1; copy nfsu2.aarch64.v11 into %s\n" "$GAMEDIR" > "$CURR_TTY" 2>/dev/null || true
+  echo "[NFSU2] SPEED2.EXE is v1.1 but $BIN is for v1.0: nfsu2.aarch64.v11 missing" >> "$GAMEDIR/log.txt"
+  sleep 6; exit 1
+fi
 if [ "$EXESIZE" != "$WANT_SIZE" ]; then
   printf "\033c" > "$CURR_TTY" 2>/dev/null || true
   printf "======================================================================\n" > "$CURR_TTY" 2>/dev/null || true
@@ -151,8 +202,8 @@ fi
 # Unbind vtconsole to allow KMSDRM full access to DRM primary plane
 printf "\033c" > "$CURR_TTY" 2>/dev/null || true
 printf "\e[?25l" > "$CURR_TTY" 2>/dev/null || true
-echo 0 | sudo tee /sys/class/vtconsole/vtcon0/bind > /dev/null 2>&1 || true
-echo 0 | sudo tee /sys/class/vtconsole/vtcon1/bind > /dev/null 2>&1 || true
+echo 0 | $ESUDO tee /sys/class/vtconsole/vtcon0/bind > /dev/null 2>&1 || true
+echo 0 | $ESUDO tee /sys/class/vtconsole/vtcon1/bind > /dev/null 2>&1 || true
 
 # ---------------------------------------------------------------------------
 # Graphics profile and frame-rate cap.
@@ -221,6 +272,8 @@ CAP_ARG="--cap60"; [ "$NFSU2_FPS" = "30" ] && CAP_ARG="--cap30"
   for f in /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq /sys/class/devfreq/*/cur_freq; do
     [ -f "$f" ] && echo "[launcher] $f = $(cat "$f" 2>/dev/null) ($(cat "$(dirname "$f")/governor" 2>/dev/null || cat "$(dirname "$f")/scaling_governor" 2>/dev/null))"
   done
+  echo "[launcher] CFW=${CFW_NAME:-unknown} uid=$(id -u) SDL_VIDEODRIVER=${SDL_VIDEODRIVER:-<system default>} LD_PRELOAD=${LD_PRELOAD:-}"
+  ls -l /dev/dri /dev/fb0 /dev/mali* 2>&1 | sed 's/^/[launcher] /'
   free -m
   uname -a
   for f in /sys/kernel/mm/transparent_hugepage/enabled /sys/kernel/mm/transparent_hugepage/defrag /sys/kernel/mm/transparent_hugepage/hpage_pmd_size; do
@@ -247,13 +300,13 @@ EXIT_CODE=$?
 # after quitting): pending writes first, then the swap file this launcher enabled on the card.
 sync
 if [ -n "$SWAP_ADDED" ]; then
-  sudo swapoff "$GAMEDIR/.swapfile" >/dev/null 2>&1
+  $ESUDO swapoff "$GAMEDIR/.swapfile" >/dev/null 2>&1
   sync
 fi
 
 # Restore console and services on exit
-echo 1 | sudo tee /sys/class/vtconsole/vtcon0/bind > /dev/null 2>&1 || true
-echo 1 | sudo tee /sys/class/vtconsole/vtcon1/bind > /dev/null 2>&1 || true
+echo 1 | $ESUDO tee /sys/class/vtconsole/vtcon0/bind > /dev/null 2>&1 || true
+echo 1 | $ESUDO tee /sys/class/vtconsole/vtcon1/bind > /dev/null 2>&1 || true
 $ESUDO systemctl restart oga_events >/dev/null 2>&1 &
 printf "\033c" > "$CURR_TTY" 2>/dev/null || true
 printf "\e[?25h" > "$CURR_TTY" 2>/dev/null || true

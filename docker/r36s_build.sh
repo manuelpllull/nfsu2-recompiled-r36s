@@ -79,10 +79,10 @@ EXESHA=$(sha1sum "$EXE" | cut -d' ' -f1)
 # The lift is redone when anything it depends on changes: the exe, the lifter (pcrecomp + patches), the lift
 # driver and its per-exe lists, the x87 window analysis. The catalog only depends on the exe and the lifter.
 liftkey() { { echo "$EXESHA $PATCHKEY"; cat "$SRC"/scripts/run_lift.py "$SRC"/scripts/exe_variant.py "$SRC"/scripts/normalize_exe.py \
-  "$SRC"/config/exe_variants.txt "$SRC"/config/hooks.txt "$SRC"/config/overrides.txt "$SRC"/config/exclude.txt \
+  "$SRC"/config/exe_variants.txt "$SRC"/config/seeds-*.txt "$SRC"/config/hooks.txt "$SRC"/config/overrides.txt "$SRC"/config/exclude.txt \
   "$SRC"/ports/r36s/lw/*; } | tr -d '\r' | sha1sum | cut -d' ' -f1; }
 LIFTKEY=$(liftkey)
-CATKEY=$(echo "$EXESHA $PATCHKEY" | sha1sum | cut -d' ' -f1)
+CATKEY=$( { echo "$EXESHA $PATCHKEY"; cat "$SRC/config/seeds-$V.txt" 2>/dev/null; } | sha1sum | cut -d' ' -f1)
 
 step "3. lift"
 GEN="$R/src/recomp/gen"
@@ -91,7 +91,7 @@ if [ "$(cat "$GEN/.lift-done" 2>/dev/null)" != "$LIFTKEY" ]; then
   python3 scripts/normalize_exe.py "$EXE" "$L/SPEED2.analysis.exe"
   python3 "$P/tools/cpp/vtable_scan.py" "$L/SPEED2.analysis.exe" --seeds "$L/vtable_seeds.json"
   python3 "$P/tools/cpp/rtti.py" "$L/SPEED2.analysis.exe" --seeds "$L/rtti_seeds.json"
-  python3 - "$L" <<'PY'
+  python3 - "$L" "$SRC/config/seeds-$V.txt" <<'PY'
 import json, sys
 d = sys.argv[1]
 seen, out = set(), []
@@ -99,6 +99,16 @@ for n in ("vtable_seeds.json", "rtti_seeds.json"):
     for e in json.load(open(f"{d}/{n}")):
         if e["address"] not in seen:
             seen.add(e["address"]); out.append(e)
+extra = sys.argv[2] if len(sys.argv) > 2 else ""
+if extra:
+    import os
+    if os.path.exists(extra):
+        for line in open(extra):
+            line = line.split("#", 1)[0].strip()
+            if line:
+                a = int(line, 16)
+                if a not in seen:
+                    seen.add(a); out.append({"address": a, "address_hex": "0x%08X" % a, "note": "config seed"})
 json.dump(out, open(f"{d}/seeds_all.json", "w"))
 print(f"{len(out)} seeds")
 PY
